@@ -3,6 +3,7 @@ package br.com.resistenciarebelde.itemsinventario.services;
 import br.com.resistenciarebelde.itemsinventario.ItemNaoEncontradoException;
 import br.com.resistenciarebelde.itemsinventario.controllers.NomeItemDTO;
 import br.com.resistenciarebelde.itemsinventario.model.Item;
+import br.com.resistenciarebelde.itemsinventario.producers.ItemEventProducer;
 import br.com.resistenciarebelde.itemsinventario.repositories.ItemRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -19,6 +21,7 @@ import java.util.stream.Collectors;
 public class ItemService {
 
     private final ItemRepository itemRepository;
+    private final ItemEventProducer itemEventProducer;
 
     public Flux<Item> findAll(@RequestParam final Integer pageIndex,
                               @RequestParam final Integer pageSize){
@@ -32,7 +35,9 @@ public class ItemService {
     }
 
     public Mono<Item> save(final Item item) {
-        return itemRepository.save(item);
+        item.setUuid(UUID.randomUUID());
+        return itemRepository.save(item)
+                .doOnSuccess(itemEventProducer::sendEvent);
     }
 
     public Flux<NomeItemDTO> findAllNames() {

@@ -1,6 +1,7 @@
 package br.com.resistenciarebelde.itemsinventario.controllers;
 
 import br.com.resistenciarebelde.itemsinventario.model.Item;
+import br.com.resistenciarebelde.itemsinventario.producers.ItemEventProducer;
 import br.com.resistenciarebelde.itemsinventario.repositories.ItemRepository;
 import br.com.resistenciarebelde.itemsinventario.services.ItemService;
 import org.bson.types.ObjectId;
@@ -16,9 +17,12 @@ import org.springframework.web.reactive.function.BodyInserters;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.UUID;
 import java.util.stream.LongStream;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @WebFluxTest
@@ -27,6 +31,9 @@ public class ItemControllerTest {
 
     @MockBean
     private ItemRepository itemRepository;
+
+    @MockBean
+    private ItemEventProducer itemEventProducer;
 
     @Autowired
     private WebTestClient webTestClient;
@@ -100,7 +107,7 @@ public class ItemControllerTest {
     @Test
     public void shouldSaveNewItem(){
         final Item item = itemInstance("Item 1", 1L);
-        when(itemRepository.save(item)).thenReturn(Mono.just(item));
+        when(itemRepository.save(any(Item.class))).thenReturn(Mono.just(item));
 
         webTestClient.post()
                 .uri("/items")
@@ -110,6 +117,8 @@ public class ItemControllerTest {
                 .expectStatus().isCreated()
                 .expectBody()
                 .jsonPath("$.id").isEqualTo(item.getId());
+
+        verify(itemEventProducer).sendEvent(item);
     }
 
     @Test
@@ -162,7 +171,7 @@ public class ItemControllerTest {
     }
 
     private Item itemInstance(final String nome, final Long pontos){
-        return new Item(new ObjectId().toString(), nome, pontos);
+        return new Item(new ObjectId().toString(), UUID.randomUUID(), nome, pontos);
     }
 
 
